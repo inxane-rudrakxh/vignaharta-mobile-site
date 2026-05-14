@@ -218,13 +218,13 @@ function About() {
             title={<>We Don't Just Sell Accessories. <span className="text-gradient-gold">We Upgrade Identities.</span></>}
           />
           <p className="mt-6 text-muted-foreground leading-relaxed reveal">
-            R Creator Mobile Shop was born from a passion for making smartphones truly personal. From premium skins to smartwatch straps, every product is curated for quality and character. Our team in Chandrapur is fast, friendly, and obsessed with getting it right.
+            R Creator Mobile Shop was born from a passion for making smartphones truly personal. From smartphones to smartwatches, every product is curated for quality and character. Our team in Chandrapur is fast, friendly, and obsessed with getting it right.
           </p>
           <div className="mt-8 grid grid-cols-3 gap-4 reveal">
             {[
               ["500+", "Happy customers"],
               ["100%", "Custom designs"],
-              ["24h", "Avg delivery"],
+              ["100%", "Genuine Products"],
             ].map(([n, l]) => (
               <div key={l} className="rounded-xl border border-border bg-card/50 p-5">
                 <div className="font-display text-3xl text-gold">{n}</div>
