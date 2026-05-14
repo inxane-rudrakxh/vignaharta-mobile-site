@@ -380,11 +380,11 @@ function Contact() {
             </div>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="https://wa.me/" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/+919766587423" target="_blank" rel="noreferrer"
                className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-black hover:opacity-90 transition">
               <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
             </a>
-            <a href="tel:+91" className="inline-flex items-center gap-2 rounded-full border border-gold/60 px-6 py-3 text-sm font-semibold text-gold hover:bg-gold/10 transition">
+            <a href="tel:+919766587423" className="inline-flex items-center gap-2 rounded-full border border-gold/60 px-6 py-3 text-sm font-semibold text-gold hover:bg-gold/10 transition">
               <Phone className="h-4 w-4" /> Call the Shop
             </a>
           </div>
