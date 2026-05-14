@@ -1,7 +1,5 @@
 import app from "../dist/server/server.js";
 
-export const config = {
-  runtime: "edge"
-};
-
-export default app.fetch;
+export default async function(request) {
+  return app.fetch(request);
+}
