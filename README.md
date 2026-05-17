@@ -1,8 +1,9 @@
-# R-Creator Site
+# Vignaharta Mobile Shop & Repairing Site
 
-R-Creator is a premium smartphone accessory shop based in Chandrapur. This repository contains the source code for the R-Creator brand website, built with modern web technologies.
+Vignaharta Mobile Shop & Repairing is a premium smartphone accessory shop based in Ghugus. This repository contains the source code for the Vignaharta Mobile Shop & Repairing brand website, built with modern web technologies.
 
 ## Tech Stack
+
 - **Framework**: [TanStack Start](https://tanstack.com/start/latest) (React)
 - **Routing**: [TanStack Router](https://tanstack.com/router/latest)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
@@ -12,11 +13,13 @@ R-Creator is a premium smartphone accessory shop based in Chandrapur. This repos
 ## Getting Started
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 2. **Run the development server:**
+
    ```bash
    npm run dev
    ```
@@ -27,4 +30,5 @@ R-Creator is a premium smartphone accessory shop based in Chandrapur. This repos
    ```
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

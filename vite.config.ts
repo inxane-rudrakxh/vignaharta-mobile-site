@@ -9,8 +9,8 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   cloudflare: false, // Disable Cloudflare for Vercel deployment
   tanstackStart: {
-    server: { 
-      preset: "vercel"
+    server: {
+      preset: "vercel",
     },
   },
 });

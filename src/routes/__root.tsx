@@ -72,11 +72,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "R Creator Mobile Shop — Customize Your World" },
-      { name: "description", content: "Chandrapur's #1 destination for custom phone skins, premium covers, smartwatch straps & mobile accessories. Premium quality, fast delivery." },
-      { name: "author", content: "R Creator Mobile Shop" },
-      { property: "og:title", content: "R Creator Mobile Shop — Customize Your World" },
-      { property: "og:description", content: "Premium custom skins, covers & accessories from Chandrapur's most loved mobile shop." },
+      { title: "Vignaharta Mobile Shop & Repairing — Customize Your World" },
+      {
+        name: "description",
+        content:
+          "Ghugus's #1 destination for custom phone skins, premium covers, smartwatch straps & mobile accessories. Premium quality, fast delivery.",
+      },
+      { name: "author", content: "Vignaharta Mobile Shop & Repairing" },
+      {
+        property: "og:title",
+        content: "Vignaharta Mobile Shop & Repairing — Customize Your World",
+      },
+      {
+        property: "og:description",
+        content: "Premium custom skins, covers & accessories from Ghugus's most loved mobile shop.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -88,7 +98,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
