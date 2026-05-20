@@ -139,45 +139,56 @@ function ProductsPage() {
 
         // 3. SAFE DATA MAPPING & 5. KEEP MOCK FALLBACK SYSTEM
         if (data && Array.isArray(data) && data.length > 0) {
+          console.log("Mapping products from Supabase...");
           const formattedProducts: Product[] = data.map((p: any) => {
-            // 4. FIX PRODUCT IMAGE HANDLING: Safe access with fallbacks
-            let imageUrl = "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop";
+            try {
+              // 4. FIX PRODUCT IMAGE HANDLING: Safe access with fallbacks
+              let imageUrl = "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop";
 
-            if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-              imageUrl = p.images[0];
-            } else if (typeof p.images === 'string' && p.images.length > 0) {
-              try {
-                // Handle cases where images might be stored as a JSON string
-                const parsed = JSON.parse(p.images);
-                imageUrl = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : p.images;
-              } catch (e) {
-                imageUrl = p.images;
+              if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+                imageUrl = p.images[0];
+              } else if (typeof p.images === 'string' && p.images.length > 0) {
+                try {
+                  // Handle cases where images might be stored as a JSON string
+                  const parsed = JSON.parse(p.images);
+                  imageUrl = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : p.images;
+                } catch (e) {
+                  imageUrl = p.images;
+                }
+              } else if (p.image && typeof p.image === 'string') {
+                imageUrl = p.image;
               }
-            } else if (p.image && typeof p.image === 'string') {
-              imageUrl = p.image;
-            }
 
-            // 3. SAFE DATA MAPPING: Handle missing/null fields with proper fallbacks
-            return {
-              id: p.id || Math.random().toString(36).substring(7),
-              name: p.title || p.name || "Unnamed Premium Product",
-              price: typeof p.price === 'string' && p.price.includes('₹') 
-                ? p.price 
-                : `₹${p.price !== null && p.price !== undefined ? p.price : '0'}`,
-              category: p.category || "General",
-              stock: p.stock_status || p.stock || "In Stock",
-              image: imageUrl || "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop",
-              rating: p.rating || 4.8,
-              description: p.description || "This is a premium high-quality product. Experience the ultimate luxury and protection.",
-            };
-          });
+              // 3. SAFE DATA MAPPING: Handle missing/null fields with proper fallbacks
+              return {
+                id: p.id || Math.random().toString(36).substring(7),
+                name: p.title || p.name || "Unnamed Premium Product",
+                price: typeof p.price === 'string' && p.price.includes('₹') 
+                  ? p.price 
+                  : `₹${p.price !== null && p.price !== undefined ? p.price : '0'}`,
+                category: p.category || "General",
+                stock: p.stock_status || p.stock || "In Stock",
+                image: imageUrl || "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop",
+                rating: p.rating || 4.8,
+                description: p.description || "This is a premium high-quality product. Experience the ultimate luxury and protection.",
+              };
+            } catch (mapError) {
+              console.error("Error mapping individual product:", mapError, p);
+              return null;
+            }
+          }).filter(Boolean) as Product[];
           
-          // Merge with mock products to ensure a full catalog if needed, 
-          // or just use dynamic data if it exists. 
-          // Based on instructions, we should show dynamic products if they exist.
-          setProducts(formattedProducts);
+          console.log("Formatted Products:", formattedProducts);
+          
+          if (formattedProducts.length > 0) {
+            setProducts(formattedProducts);
+          } else {
+            console.log("No valid products after mapping, using mock data.");
+            setProducts(MOCK_PRODUCTS);
+          }
         } else {
           // 5. KEEP MOCK FALLBACK SYSTEM: If no data, show mock products
+          console.log("No data from Supabase or empty array, using mock data.");
           setProducts(MOCK_PRODUCTS);
         }
       } catch (err) {

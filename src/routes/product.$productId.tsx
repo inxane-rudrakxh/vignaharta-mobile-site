@@ -34,14 +34,29 @@ function ProductDetailsPage() {
         if (error) throw error;
         
         if (data) {
+          let images = ["https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop"];
+          
+          if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+            images = data.images;
+          } else if (typeof data.images === 'string' && data.images.length > 0) {
+            try {
+              const parsed = JSON.parse(data.images);
+              images = Array.isArray(parsed) && parsed.length > 0 ? parsed : [data.images];
+            } catch (e) {
+              images = [data.images];
+            }
+          } else if (data.image && typeof data.image === 'string') {
+            images = [data.image];
+          }
+
           setProduct({
             id: data.id,
-            title: data.title || "Unnamed Product",
+            title: data.title || data.name || "Unnamed Product",
             price: data.price || 0,
             category: data.category || "General",
-            stock_status: data.stock_status || "In Stock",
+            stock_status: data.stock_status || data.stock || "In Stock",
             description: data.description || "No description available for this premium product.",
-            images: data.images && data.images.length > 0 ? data.images : ["https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop"],
+            images: images,
           });
         }
       } catch (err) {

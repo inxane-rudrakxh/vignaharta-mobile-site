@@ -122,17 +122,33 @@ function AdminDashboard() {
       if (error) throw error;
 
       if (data) {
-        setProducts(data.map((p: any) => ({
-          id: p.id,
-          name: p.title || p.name || "Unnamed Product",
-          price: `₹${p.price || 0}`,
-          category: p.category || "General",
-          stock: p.stock_status || "In Stock",
-          image: p.images?.[0] || "",
-          rating: 0,
-          description: p.description,
-          featured: p.featured || false,
-        })));
+        setProducts(data.map((p: any) => {
+          let imageUrl = "";
+          if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+            imageUrl = p.images[0];
+          } else if (typeof p.images === 'string' && p.images.length > 0) {
+            try {
+              const parsed = JSON.parse(p.images);
+              imageUrl = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : p.images;
+            } catch (e) {
+              imageUrl = p.images;
+            }
+          } else if (p.image && typeof p.image === 'string') {
+            imageUrl = p.image;
+          }
+
+          return {
+            id: p.id,
+            name: p.title || p.name || "Unnamed Product",
+            price: typeof p.price === 'string' && p.price.includes('₹') ? p.price : `₹${p.price || 0}`,
+            category: p.category || "General",
+            stock: p.stock_status || "In Stock",
+            image: imageUrl || "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop",
+            rating: p.rating || 0,
+            description: p.description || "",
+            featured: p.featured || false,
+          };
+        }));
       }
     } catch (err) {
       console.error(err);
