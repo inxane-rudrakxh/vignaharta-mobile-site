@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, createContext, useContext, useState } from "react";
+import { useEffect } from "react";
 import {
   Sparkles,
   Palette,
@@ -19,28 +19,13 @@ import {
   Facebook,
   ArrowRight,
   Quote,
-  Globe,
-  Menu,
-  X,
 } from "lucide-react";
 import heroPhone from "@/assets/hero-phone.png";
 import aboutArt from "@/assets/about-art.jpg";
-import logo from "@/assets/logo.jpg";
-import { translations, TranslationKey, Language } from "@/i18n";
+import { TranslationKey } from "@/i18n";
+import { useLanguage } from "@/components/Layout";
 
 export const Route = createFileRoute("/")({ component: Landing });
-
-export const LanguageContext = createContext<{
-  lang: Language;
-  setLang: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
-} | null>(null);
-
-export const useLanguage = () => {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
-  return ctx;
-};
 
 const reviews = [
   {
@@ -92,9 +77,6 @@ const brands = [
 ];
 
 function Landing() {
-  const [lang, setLang] = useState<Language>("en");
-  const t = (key: TranslationKey) => translations[key][lang];
-
   useEffect(() => {
     const els = document.querySelectorAll(".reveal");
     const io = new IntersectionObserver(
@@ -106,120 +88,16 @@ function Landing() {
   }, []);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
-      <div className="dark min-h-screen bg-background text-foreground overflow-x-hidden">
-        <Nav />
-        <Hero />
-        <TrustBar />
-        <About />
-        <Categories />
-        <Testimonials />
-        <WhyUs />
-        <CustomCta />
-        <Contact />
-        <Footer />
-      </div>
-    </LanguageContext.Provider>
-  );
-}
-
-function Logo() {
-  return (
-    <a href="#top" className="flex items-center gap-2.5 group">
-      <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-gold bg-white overflow-hidden">
-        <img
-          src={logo}
-          alt="Vignaharta Mobile Shop & Repairing logo"
-          className="h-full w-full object-cover scale-110"
-        />
-        <span className="absolute inset-0 rounded-full glow-gold-soft opacity-0 group-hover:opacity-100 transition" />
-      </span>
-      <span className="font-display tracking-[0.18em] text-sm hidden sm:inline-block whitespace-nowrap">
-        VIGNAHARTA MOBILE SHOP & REPAIRING
-      </span>
-      <span className="font-display tracking-[0.18em] text-sm sm:hidden whitespace-nowrap">
-        VIGNAHARTA
-      </span>
-    </a>
-  );
-}
-
-function Nav() {
-  const { lang, setLang, t } = useLanguage();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  return (
-    <header
-      id="top"
-      className="fixed top-0 inset-x-0 z-50 backdrop-blur-md bg-background/90 border-b border-border/60"
-    >
-      <nav className="mx-auto max-w-7xl px-5 sm:px-8 h-16 flex items-center justify-between">
-        <Logo />
-        <ul className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          {[
-            { id: "products", label: "navProducts" },
-            { id: "about", label: "navAbout" },
-            { id: "reviews", label: "navReviews" },
-            { id: "contact", label: "navContact" },
-          ].map((l) => (
-            <li key={l.id}>
-              <a href={`#${l.id}`} className="hover:text-gold transition-colors">
-                {t(l.label as TranslationKey)}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLang(lang === "en" ? "hi" : "en")}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
-          >
-            <Globe className="h-3.5 w-3.5" />
-            {lang === "en" ? "HI" : "EN"}
-          </button>
-          <a
-            href="#custom"
-            className="hidden sm:inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium bg-gold text-primary-foreground hover:opacity-90 transition"
-          >
-            {t("getCustomSkin")} <ArrowRight className="h-3.5 w-3.5" />
-          </a>
-          <button
-            className="md:hidden p-2 text-muted-foreground hover:text-foreground transition"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Menu Dropdown */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-border/60 bg-background/95 backdrop-blur-md absolute top-16 left-0 w-full p-5 flex flex-col gap-4 shadow-xl">
-          {[
-            { id: "products", label: "navProducts" },
-            { id: "about", label: "navAbout" },
-            { id: "reviews", label: "navReviews" },
-            { id: "contact", label: "navContact" },
-          ].map((l) => (
-            <a
-              key={l.id}
-              href={`#${l.id}`}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-foreground text-sm font-medium py-2 border-b border-border/40 hover:text-gold transition-colors"
-            >
-              {t(l.label as TranslationKey)}
-            </a>
-          ))}
-          <a
-            href="#custom"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="mt-2 inline-flex justify-center items-center gap-2 rounded-full px-4 py-3 text-sm font-medium bg-gold text-primary-foreground hover:opacity-90 transition"
-          >
-            {t("getCustomSkin")} <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
-      )}
-    </header>
+    <>
+      <Hero />
+      <TrustBar />
+      <About />
+      <Categories />
+      <Testimonials />
+      <WhyUs />
+      <CustomCta />
+      <Contact />
+    </>
   );
 }
 
@@ -253,7 +131,8 @@ function Hero() {
               href="#products"
               className="group inline-flex justify-center items-center gap-2 rounded-full bg-gold px-7 py-3.5 text-sm font-semibold text-primary-foreground animate-pulse-gold hover:scale-[1.02] transition"
             >
-              {t("exploreCollection")} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              {t("exploreCollection")}{" "}
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </a>
             <a
               href="#custom"
@@ -668,59 +547,5 @@ function Contact() {
         </div>
       </div>
     </section>
-  );
-}
-
-function Footer() {
-  const { t } = useLanguage();
-  return (
-    <footer className="border-t border-border/60 bg-card/30">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 py-14 grid md:grid-cols-3 gap-10">
-        <div>
-          <Logo />
-          <p className="mt-4 text-sm text-muted-foreground max-w-xs">{t("footerDesc")}</p>
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-[0.25em] text-gold mb-4">{t("explore")}</div>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            {[
-              { id: "top", label: "home" },
-              { id: "products", label: "navProducts" },
-              { id: "reviews", label: "navReviews" },
-              { id: "contact", label: "navContact" },
-            ].map((l) => (
-              <li key={l.id}>
-                <a href={`#${l.id}`} className="hover:text-gold transition">
-                  {t(l.label as TranslationKey)}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-[0.25em] text-gold mb-4">{t("follow")}</div>
-          <div className="flex gap-3">
-            {[
-              { icon: Instagram, href: "https://www.instagram.com/vighnaharta_mobile_ghugus/" },
-              { icon: Facebook, href: "https://www.facebook.com/vighnahartamobile" },
-              { icon: MessageCircle, href: "https://wa.me/+917261934434" },
-            ].map(({ icon: Icon, href }, i) => (
-              <a
-                key={i}
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                className="h-10 w-10 rounded-full border border-border hover:border-gold hover:text-gold transition flex items-center justify-center text-muted-foreground"
-              >
-                <Icon className="h-4 w-4" />
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground flex flex-wrap justify-center items-center gap-1">
-        {t("copyright")} <span className="text-gold">❤</span> {t("forOurCustomers")}
-      </div>
-    </footer>
   );
 }

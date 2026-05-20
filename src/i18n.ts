@@ -118,7 +118,7 @@ export const translations = {
     hi: "© 2025 विघ्नहर्ता मोबाइल शॉप एंड रिपेयरिंग · घुगस, महाराष्ट्र · प्यार से बनाया गया",
   },
   forOurCustomers: { en: "for our customers", hi: "हमारे ग्राहकों के लिए" },
-  followUsInsta: { en: "Follow us on Instagram", hi: "इंस्टाग्राम पर हमें फॉलो करें" }
+  followUsInsta: { en: "Follow us on Instagram", hi: "इंस्टाग्राम पर हमें फॉलो करें" },
 };
 
 export type TranslationKey = keyof typeof translations;
