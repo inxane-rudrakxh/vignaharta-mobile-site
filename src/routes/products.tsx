@@ -122,49 +122,67 @@ function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
+        // 1. FIX SUPABASE FETCH: Simple query without ordering to avoid schema mismatch crashes
         const { data, error } = await supabase
           .from('products')
           .select('*');
 
+        // 2. ADD DEBUG LOGGING
         console.log("Products Data:", data);
         console.log("Products Error:", error);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error:", error);
+          setProducts(MOCK_PRODUCTS);
+          return;
+        }
 
+        // 3. SAFE DATA MAPPING & 5. KEEP MOCK FALLBACK SYSTEM
         if (data && Array.isArray(data) && data.length > 0) {
           const formattedProducts: Product[] = data.map((p: any) => {
+            // 4. FIX PRODUCT IMAGE HANDLING: Safe access with fallbacks
             let imageUrl = "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop";
 
             if (p.images && Array.isArray(p.images) && p.images.length > 0) {
               imageUrl = p.images[0];
             } else if (typeof p.images === 'string' && p.images.length > 0) {
               try {
+                // Handle cases where images might be stored as a JSON string
                 const parsed = JSON.parse(p.images);
                 imageUrl = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : p.images;
               } catch (e) {
-                imageUrl = p.images; // fallback to the string if it's not valid JSON
+                imageUrl = p.images;
               }
             } else if (p.image && typeof p.image === 'string') {
               imageUrl = p.image;
             }
 
+            // 3. SAFE DATA MAPPING: Handle missing/null fields with proper fallbacks
             return {
               id: p.id || Math.random().toString(36).substring(7),
               name: p.title || p.name || "Unnamed Premium Product",
-              price: typeof p.price === 'string' && p.price.includes('₹') ? p.price : `₹${p.price || 0}`,
+              price: typeof p.price === 'string' && p.price.includes('₹') 
+                ? p.price 
+                : `₹${p.price !== null && p.price !== undefined ? p.price : '0'}`,
               category: p.category || "General",
               stock: p.stock_status || p.stock || "In Stock",
-              image: imageUrl,
+              image: imageUrl || "https://images.unsplash.com/photo-1605236453806-6ff36851218e?q=80&w=600&auto=format&fit=crop",
               rating: p.rating || 4.8,
               description: p.description || "This is a premium high-quality product. Experience the ultimate luxury and protection.",
             };
           });
+          
+          // Merge with mock products to ensure a full catalog if needed, 
+          // or just use dynamic data if it exists. 
+          // Based on instructions, we should show dynamic products if they exist.
           setProducts(formattedProducts);
         } else {
+          // 5. KEEP MOCK FALLBACK SYSTEM: If no data, show mock products
           setProducts(MOCK_PRODUCTS);
         }
       } catch (err) {
-        console.error("Error fetching products from Supabase, using mock data:", err);
+        // 6. ERROR HANDLING: Ensure page never crashes
+        console.error("Critical error in fetchProducts, using mock data:", err);
         setProducts(MOCK_PRODUCTS);
       } finally {
         setIsLoading(false);
