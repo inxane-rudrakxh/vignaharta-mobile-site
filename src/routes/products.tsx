@@ -217,11 +217,15 @@ function ProductsPage() {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []);
+  }, [filteredProducts, isLoading]);
+
+  console.log("Fetch finished");
+  console.log("Products:", products);
+  console.log("Filtered Products:", filteredProducts);
+  console.log("isLoading:", isLoading);
 
   return (
     <div className="min-h-screen grain">
-      {/* Header Section */}
       <section className="relative pt-24 pb-12 overflow-hidden border-b border-border/60">
         <div
           aria-hidden
