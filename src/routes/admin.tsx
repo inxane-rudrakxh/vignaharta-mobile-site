@@ -62,6 +62,8 @@ type Order = {
   amount_paid: number;
   order_status: string;
   pickup_status: string;
+  transaction_id?: string;
+  payment_gateway?: string;
   created_at: string;
   products?: {
     title: string;
@@ -80,6 +82,8 @@ type SkinRequest = {
   customer_phone: string;
   payment_status: string;
   order_status: string;
+  transaction_id?: string;
+  payment_gateway?: string;
   admin_notes?: string;
   created_at: string;
 };
@@ -994,6 +998,12 @@ function AdminDashboard() {
                               <div className="flex flex-col">
                                 <span className="text-sm text-foreground font-medium">₹{order.amount_paid || 0}</span>
                                 <span className="text-xs text-muted-foreground">{order.payment_type || 'N/A'}</span>
+                                {order.transaction_id && (
+                                  <span className="text-[10px] text-muted-foreground mt-1">Txn: {order.transaction_id}</span>
+                                )}
+                                {order.payment_gateway && (
+                                  <span className="text-[10px] text-muted-foreground">via {order.payment_gateway}</span>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">

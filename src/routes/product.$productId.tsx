@@ -124,24 +124,28 @@ function ProductDetailsPage() {
           customer_email: formData.email,
           payment_type: formData.paymentType,
           amount_paid: isAdvance ? 100 : product.price,
+          payment_status: isAdvance ? "Advance Paid" : "Paid",
           order_status: "Reserved",
           pickup_status: "Pending",
-          razorpay_payment_id: verification.razorpay_payment_id,
-          razorpay_order_id: verification.razorpay_order_id,
-          razorpay_signature: verification.razorpay_signature
+          transaction_id: verification.transaction_id,
+          payment_gateway: "Cashfree",
         }])
         .select();
 
       console.log("Insert Data:", data);
       console.log("Insert Error:", error);
 
-      if (error) throw new Error("Payment successful but failed to save order. Contact support with Payment ID: " + verification.razorpay_payment_id);
+      if (error) throw new Error("Payment successful but failed to save order. Contact support with Transaction ID: " + verification.transaction_id);
       
       console.log("STEP 8 - Order saved successfully");
-      const newOrderId = data?.[0]?.id || verification.razorpay_order_id;
+      const newOrderId = data?.[0]?.id || verification.order_id;
       setOrderId(newOrderId);
       setReservationSuccess(true);
       toast.success("Order reserved successfully!");
+      
+      // Auto-redirect to WhatsApp
+      const waMessage = encodeURIComponent(`Hello Vighnaharta Mobile Shop!\n\nI just placed an order on your website.\n*Customer Name:* ${formData.name}\n*Product:* ${product.title}\n*Payment Type:* ${formData.paymentType}\n*Amount Paid:* ₹${isAdvance ? 100 : product.price}\n*Transaction ID:* ${verification.transaction_id}\n*Order ID:* ${newOrderId}\n\nPlease confirm my reservation!`);
+      window.open(`https://wa.me/918080808080?text=${waMessage}`, '_blank');
     } catch (err: any) {
       console.error("Payment or reservation failed:", err);
       toast.error(err.message || "Payment failed or cancelled.");
