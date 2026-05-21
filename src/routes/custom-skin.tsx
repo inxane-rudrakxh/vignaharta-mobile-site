@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { createPaymentIntent, initiateCheckout, PaymentVerification } from "@/lib/payments";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/custom-skin")({
   component: CustomSkinPage,
@@ -162,10 +163,17 @@ function CustomSkinPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedDevice || !selectedSkinType || !selectedPayment || !customerName || !customerPhone) return;
+    if (!selectedDevice || !selectedSkinType || !selectedPayment || !customerName || !customerPhone || isSubmitting) return;
 
+    console.log("STEP 1 - Submit clicked");
+    console.log("STEP 2 - Loading enabled");
     setIsSubmitting(true);
     setError(null);
+    
+    const failsafeTimer = setTimeout(() => {
+      console.log("Failsafe loading reset");
+      setIsSubmitting(false);
+    }, 10000);
 
     const isAdvance = selectedPayment === "advance";
     const basePrice = parseInt(SKIN_TYPES.find(s => s.id === selectedSkinType)?.price.replace(/\D/g, '') || "299", 10);
@@ -174,52 +182,48 @@ function CustomSkinPage() {
     try {
       const intent = await createPaymentIntent(amountToPay, "INR", isAdvance);
       
-      await initiateCheckout(
+      const verification = await initiateCheckout(
         intent,
-        { name: customerName, phone: customerPhone },
-        async (verification: PaymentVerification) => {
-          try {
-            const { data, error: dbError } = await supabase
-              .from('custom_skin_requests')
-              .insert([
-                {
-                  device_type: selectedDevice,
-                  skin_type: selectedSkinType,
-                  payment_type: selectedPayment,
-                  uploaded_design_url: uploadedDesignUrl,
-                  customer_name: customerName,
-                  customer_phone: customerPhone,
-                  payment_status: selectedPayment === "full" ? "Paid" : "Advance Paid",
-                  order_status: "Pending",
-                  razorpay_payment_id: verification.razorpay_payment_id,
-                  razorpay_order_id: verification.razorpay_order_id,
-                  razorpay_signature: verification.razorpay_signature
-                }
-              ])
-              .select();
-
-            if (dbError) throw dbError;
-            
-            setOrderId(data?.[0]?.id || verification.razorpay_order_id);
-            setCurrentStep(5);
-          } catch (dbError: any) {
-            console.error("Database save failed:", dbError);
-            alert("Payment successful but failed to save request. Contact support.");
-            setCurrentStep(5);
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-        (paymentError: any) => {
-          console.error("Payment failed:", paymentError);
-          alert("Payment failed or cancelled.");
-          setIsSubmitting(false);
-        }
+        { name: customerName, phone: customerPhone }
       );
+      
+      console.log("STEP 7 - Saving order to Supabase");
+      const { data, error: dbError } = await supabase
+        .from('custom_skin_requests')
+        .insert([
+          {
+            device_type: selectedDevice,
+            skin_type: selectedSkinType,
+            payment_type: selectedPayment,
+            uploaded_design_url: uploadedDesignUrl,
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            payment_status: selectedPayment === "full" ? "Paid" : "Advance Paid",
+            order_status: "Pending",
+            razorpay_payment_id: verification.razorpay_payment_id,
+            razorpay_order_id: verification.razorpay_order_id,
+            razorpay_signature: verification.razorpay_signature
+          }
+        ])
+        .select();
+
+      console.log("Insert Data:", data);
+      console.log("Insert Error:", dbError);
+
+      if (dbError) throw new Error("Payment successful but failed to save request. Contact support.");
+      
+      console.log("STEP 8 - Order saved successfully");
+      setOrderId(data?.[0]?.id || verification.razorpay_order_id);
+      setCurrentStep(5);
+      toast.success("Custom skin request placed successfully!");
     } catch (err: any) {
-      console.error("Error initiating payment:", err);
-      alert("Could not initiate payment: " + err.message);
+      console.error("Payment or reservation failed:", err);
+      toast.error(err.message || "Payment failed or cancelled.");
+    } finally {
+      clearTimeout(failsafeTimer);
+      console.log("STEP 9 - Resetting loading state");
       setIsSubmitting(false);
+      console.log("Loading state reset complete");
     }
   };
 

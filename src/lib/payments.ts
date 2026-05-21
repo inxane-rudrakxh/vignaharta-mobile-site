@@ -42,23 +42,23 @@ export async function createPaymentIntent(
  */
 export async function initiateCheckout(
   intent: PaymentIntent,
-  customerDetails: { name: string; phone: string; email?: string },
-  onSuccess: (verification: PaymentVerification) => void,
-  onError: (error: any) => void
-) {
+  customerDetails: { name: string; phone: string; email?: string }
+): Promise<PaymentVerification> {
+  console.log("[Payment Arch] Initiating checkout...");
   const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
   if (!keyId) {
     console.warn("[Payment Arch] Razorpay Key ID missing. Bypassing payment for development.");
     // Simulate successful payment for development flow
-    setTimeout(() => {
-      onSuccess({
-        razorpay_payment_id: "pay_" + Math.random().toString(36).substr(2, 9),
-        razorpay_order_id: intent.id,
-        razorpay_signature: "simulated_signature"
-      });
-    }, 1000);
-    return;
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          razorpay_payment_id: "pay_" + Math.random().toString(36).substr(2, 9),
+          razorpay_order_id: intent.id,
+          razorpay_signature: "simulated_signature"
+        });
+      }, 1000);
+    });
   }
 
   // Load Razorpay script dynamically if not present
@@ -70,36 +70,64 @@ export async function initiateCheckout(
     await new Promise(resolve => script.onload = resolve);
   }
 
-  const options = {
-    key: keyId,
-    amount: intent.amount,
-    currency: intent.currency,
-    name: "Vighnaharta Mobile Shop",
-    description: "Premium Gadget Order",
-    image: "/logo.png", // Replace with actual logo URL
-    order_id: intent.id,
-    handler: function (response: PaymentVerification) {
-      onSuccess(response);
-    },
-    prefill: {
-      name: customerDetails.name,
-      email: customerDetails.email || "",
-      contact: customerDetails.phone
-    },
-    theme: {
-      color: "#d4a017" // Matches the Vighnaharta gold theme
-    }
-  };
+  return new Promise((resolve, reject) => {
+    let isHandled = false;
 
-  try {
-    const rzp = new (window as any).Razorpay(options);
-    rzp.on('payment.failed', function (response: any) {
-      onError(response.error);
-    });
-    rzp.open();
-  } catch (err) {
-    onError(err);
-  }
+    const handleSuccess = (response: PaymentVerification) => {
+      if (isHandled) return;
+      isHandled = true;
+      console.log("STEP 4 - Payment success callback");
+      resolve(response);
+    };
+
+    const handleError = (error: any) => {
+      if (isHandled) return;
+      isHandled = true;
+      console.error("Payment Arch Error:", error);
+      reject(error);
+    };
+
+    const options = {
+      key: keyId,
+      amount: intent.amount,
+      currency: intent.currency,
+      name: "Vighnaharta Mobile Shop",
+      description: "Premium Gadget Order",
+      image: "/logo.png", // Replace with actual logo URL
+      order_id: intent.id,
+      handler: function (response: PaymentVerification) {
+        handleSuccess(response);
+      },
+      modal: {
+        ondismiss: function () {
+          console.log("STEP 6 - Popup dismissed");
+          setTimeout(() => {
+            handleError(new Error("Payment cancelled or closed."));
+          }, 300);
+        }
+      },
+      prefill: {
+        name: customerDetails.name,
+        email: customerDetails.email || "",
+        contact: customerDetails.phone
+      },
+      theme: {
+        color: "#d4a017" // Matches the Vighnaharta gold theme
+      }
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        console.log("STEP 5 - Payment failed callback");
+        handleError(response.error);
+      });
+      console.log("STEP 3 - Razorpay opened");
+      rzp.open();
+    } catch (err) {
+      handleError(err);
+    }
+  });
 }
 
 /**

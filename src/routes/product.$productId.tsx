@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft, ShoppingBag, ShieldCheck, Truck, Star, Loader2, X, Check } from "lucide-react";
 import { createPaymentIntent, initiateCheckout, PaymentVerification } from "@/lib/payments";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/product/$productId")({
   component: ProductDetailsPage,
@@ -93,57 +94,62 @@ function ProductDetailsPage() {
 
   const handleReservationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product) return;
+    if (!product || isSubmitting) return;
     
+    console.log("STEP 1 - Submit clicked");
+    console.log("STEP 2 - Loading enabled");
     setIsSubmitting(true);
+    
+    const failsafeTimer = setTimeout(() => {
+      console.log("Failsafe loading reset");
+      setIsSubmitting(false);
+    }, 10000);
+
     try {
       const isAdvance = formData.paymentType === "Advance Payment";
       const intent = await createPaymentIntent(product.price, "INR", isAdvance);
       
-      await initiateCheckout(
+      const verification = await initiateCheckout(
         intent,
-        { name: formData.name, phone: formData.phone, email: formData.email },
-        async (verification: PaymentVerification) => {
-          try {
-            const { data, error } = await supabase
-              .from('orders')
-              .insert([{
-                product_name: product.title,
-                customer_name: formData.name,
-                customer_phone: formData.phone,
-                customer_email: formData.email,
-                payment_type: formData.paymentType,
-                amount_paid: isAdvance ? 100 : product.price,
-                order_status: "Reserved",
-                pickup_status: "Pending",
-                razorpay_payment_id: verification.razorpay_payment_id,
-                razorpay_order_id: verification.razorpay_order_id,
-                razorpay_signature: verification.razorpay_signature
-              }])
-              .select();
-
-            if (error) throw error;
-            
-            const newOrderId = data?.[0]?.id || verification.razorpay_order_id;
-            setOrderId(newOrderId);
-            setReservationSuccess(true);
-          } catch (dbError: any) {
-            console.error("Database save failed:", dbError);
-            alert("Payment successful but failed to save order. Contact support with Payment ID: " + verification.razorpay_payment_id);
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-        (paymentError: any) => {
-          console.error("Payment failed:", paymentError);
-          alert("Payment failed or cancelled.");
-          setIsSubmitting(false);
-        }
+        { name: formData.name, phone: formData.phone, email: formData.email }
       );
+      
+      console.log("STEP 7 - Saving order to Supabase");
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([{
+          product_name: product.title,
+          customer_name: formData.name,
+          customer_phone: formData.phone,
+          customer_email: formData.email,
+          payment_type: formData.paymentType,
+          amount_paid: isAdvance ? 100 : product.price,
+          order_status: "Reserved",
+          pickup_status: "Pending",
+          razorpay_payment_id: verification.razorpay_payment_id,
+          razorpay_order_id: verification.razorpay_order_id,
+          razorpay_signature: verification.razorpay_signature
+        }])
+        .select();
+
+      console.log("Insert Data:", data);
+      console.log("Insert Error:", error);
+
+      if (error) throw new Error("Payment successful but failed to save order. Contact support with Payment ID: " + verification.razorpay_payment_id);
+      
+      console.log("STEP 8 - Order saved successfully");
+      const newOrderId = data?.[0]?.id || verification.razorpay_order_id;
+      setOrderId(newOrderId);
+      setReservationSuccess(true);
+      toast.success("Order reserved successfully!");
     } catch (err: any) {
-      console.error("Error initiating payment:", err);
-      alert("Could not initiate payment: " + err.message);
+      console.error("Payment or reservation failed:", err);
+      toast.error(err.message || "Payment failed or cancelled.");
+    } finally {
+      clearTimeout(failsafeTimer);
+      console.log("STEP 9 - Resetting loading state");
       setIsSubmitting(false);
+      console.log("Loading state reset complete");
     }
   };
 
