@@ -145,7 +145,7 @@ function ProductDetailsPage() {
       
       // Auto-redirect to WhatsApp
       const waMessage = encodeURIComponent(`Hello Vighnaharta Mobile Shop!\n\nI just placed an order on your website.\n*Customer Name:* ${formData.name}\n*Product:* ${product.title}\n*Payment Type:* ${formData.paymentType}\n*Amount Paid:* ₹${isAdvance ? 100 : product.price}\n*Transaction ID:* ${verification.transaction_id}\n*Order ID:* ${newOrderId}\n\nPlease confirm my reservation!`);
-      window.open(`https://wa.me/918080808080?text=${waMessage}`, '_blank');
+      window.open(`https://wa.me/917261934434?text=${waMessage}`, '_blank');
     } catch (err: any) {
       console.error("Payment or reservation failed:", err);
       toast.error(err.message || "Payment failed or cancelled.");

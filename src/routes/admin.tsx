@@ -21,7 +21,10 @@ import {
   TrendingUp,
   Activity,
   Users,
-  Filter
+  Filter,
+  Layers,
+  Type,
+  Smile
 } from "lucide-react";
 import {
   AreaChart,
@@ -84,6 +87,7 @@ type SkinRequest = {
   order_status: string;
   transaction_id?: string;
   payment_gateway?: string;
+  design_metadata?: any;
   admin_notes?: string;
   created_at: string;
 };
@@ -1106,6 +1110,19 @@ function AdminDashboard() {
                             <span className="text-sm font-medium capitalize">{req.skin_type}</span>
                           </div>
                         </div>
+
+                        {req.design_metadata?.layers?.length > 0 && (
+                          <div className="mb-4 bg-black/20 p-3 rounded-xl border border-border/50">
+                            <span className="text-[10px] uppercase text-gold font-medium mb-2 block flex items-center gap-1.5"><Layers className="w-3 h-3" /> Studio Layers</span>
+                            <div className="flex flex-wrap gap-2">
+                              {req.design_metadata.layers.map((layer: any, i: number) => (
+                                <span key={i} className="text-[10px] px-2 py-1 bg-card rounded-md border border-border/60 text-muted-foreground flex items-center gap-1">
+                                  {layer.type === 'text' ? <><Type className="w-2.5 h-2.5"/> "{layer.content}"</> : <><Smile className="w-2.5 h-2.5"/> {layer.content}</>}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="mb-6">
                           <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Admin Design Notes</label>

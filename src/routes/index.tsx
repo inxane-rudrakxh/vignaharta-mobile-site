@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
   Sparkles,
@@ -134,12 +134,12 @@ function Hero() {
               {t("exploreCollection")}{" "}
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </a>
-            <a
-              href="#custom"
+            <Link
+              to="/custom-skin"
               className="inline-flex justify-center items-center gap-2 rounded-full border border-gold/60 px-7 py-3.5 text-sm font-semibold text-gold hover:bg-gold/10 transition"
             >
               {t("getCustomSkin")}
-            </a>
+            </Link>
           </div>
           <div className="mt-10 flex flex-wrap justify-center lg:justify-start items-center gap-2 sm:gap-6 text-xs text-muted-foreground">
             <div className="flex items-center gap-1 text-gold">
@@ -469,12 +469,12 @@ function CustomCta() {
             <span className="text-gradient-gold">{t("trulyYours")}</span>
           </h2>
           <p className="mt-5 text-muted-foreground max-w-xl mx-auto">{t("customDesc")}</p>
-          <a
-            href="#contact"
+          <Link
+            to="/custom-skin"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-gold px-8 py-4 text-sm font-semibold text-primary-foreground animate-pulse-gold hover:scale-[1.03] transition"
           >
             {t("startCustomizing")} <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
