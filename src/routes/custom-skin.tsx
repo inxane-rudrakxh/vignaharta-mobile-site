@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { createPaymentIntent, initiateCheckout, PaymentVerification } from "@/lib/payments";
 
 export const Route = createFileRoute("/custom-skin")({
   component: CustomSkinPage,
@@ -80,8 +81,13 @@ function CustomSkinPage() {
   const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedDesignUrl, setUploadedDesignUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [orderId, setOrderId] = useState("");
 
   useEffect(() => {
     const els = document.querySelectorAll(".reveal");
@@ -106,47 +112,113 @@ function CustomSkinPage() {
     if (currentStep === 2 && selectedSkinType && selectedSkinType !== "custom") {
       setCurrentStep(4);
     } else if (currentStep === 4) {
+      if (!customerName || !customerPhone) {
+        alert("Please provide your contact details.");
+        return;
+      }
       handleSubmit();
     } else {
       handleNextStep();
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFile(file);
+    setIsUploading(true);
+
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "vighnaharta_uploads";
+
+    if (!cloudName) {
+      alert("Cloudinary configuration missing.");
+      setIsUploading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        setUploadedDesignUrl(data.secure_url);
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (err: any) {
+      alert(`Image upload failed: ${err.message}`);
+      setUploadedFile(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!selectedDevice || !selectedSkinType || !selectedPayment) return;
+    if (!selectedDevice || !selectedSkinType || !selectedPayment || !customerName || !customerPhone) return;
 
     setIsSubmitting(true);
     setError(null);
 
+    const isAdvance = selectedPayment === "advance";
+    const basePrice = parseInt(SKIN_TYPES.find(s => s.id === selectedSkinType)?.price.replace(/\D/g, '') || "299", 10);
+    const amountToPay = isAdvance ? 100 : basePrice;
+
     try {
-      let uploadedDesignUrl = null;
+      const intent = await createPaymentIntent(amountToPay, "INR", isAdvance);
+      
+      await initiateCheckout(
+        intent,
+        { name: customerName, phone: customerPhone },
+        async (verification: PaymentVerification) => {
+          try {
+            const { data, error: dbError } = await supabase
+              .from('custom_skin_requests')
+              .insert([
+                {
+                  device_type: selectedDevice,
+                  skin_type: selectedSkinType,
+                  payment_type: selectedPayment,
+                  uploaded_design_url: uploadedDesignUrl,
+                  customer_name: customerName,
+                  customer_phone: customerPhone,
+                  payment_status: selectedPayment === "full" ? "Paid" : "Advance Paid",
+                  order_status: "Pending",
+                  razorpay_payment_id: verification.razorpay_payment_id,
+                  razorpay_order_id: verification.razorpay_order_id,
+                  razorpay_signature: verification.razorpay_signature
+                }
+              ])
+              .select();
 
-      // If there's an uploaded file, ideally upload to Supabase Storage here
-      // For now, since we're setting up the structure, we'll store a placeholder URL or real upload logic if storage is configured.
-      // const { data, error: uploadError } = await supabase.storage.from('designs').upload(`public/${uploadedFile.name}`, uploadedFile);
-
-      const { error: dbError } = await supabase
-        .from('custom_skin_requests')
-        .insert([
-          {
-            device_type: selectedDevice,
-            skin_type: selectedSkinType,
-            payment_type: selectedPayment,
-            // uploaded_design_url: uploadedDesignUrl,
-            customer_name: "Guest", // Would be linked to auth user if logged in
-            payment_status: "Pending",
-            order_status: "Pending"
+            if (dbError) throw dbError;
+            
+            setOrderId(data?.[0]?.id || verification.razorpay_order_id);
+            setCurrentStep(5);
+          } catch (dbError: any) {
+            console.error("Database save failed:", dbError);
+            alert("Payment successful but failed to save request. Contact support.");
+            setCurrentStep(5);
+          } finally {
+            setIsSubmitting(false);
           }
-        ]);
-
-      if (dbError) throw dbError;
-
-      setCurrentStep(5);
+        },
+        (paymentError: any) => {
+          console.error("Payment failed:", paymentError);
+          alert("Payment failed or cancelled.");
+          setIsSubmitting(false);
+        }
+      );
     } catch (err: any) {
-      console.error("Error submitting request:", err);
-      // Even if Supabase isn't fully set up yet, fallback to success for UX during transition
-      setCurrentStep(5);
-    } finally {
+      console.error("Error initiating payment:", err);
+      alert("Could not initiate payment: " + err.message);
       setIsSubmitting(false);
     }
   };
@@ -313,16 +385,29 @@ function CustomSkinPage() {
                   SVG, PNG, JPG or WEBP (max. 10MB)
                 </p>
 
-                {/* Fake file input trigger */}
-                <button
-                  onClick={() =>
-                    setUploadedFile(new File([""], "custom-design.jpg", { type: "image/jpeg" }))
-                  }
-                  className="mt-6 px-6 py-2 rounded-full border border-border text-sm hover:bg-card transition-colors"
-                >
-                  {uploadedFile ? "design_selected.jpg (Click to change)" : "Browse Files"}
-                </button>
+                {/* File input trigger */}
+                <div className="mt-6 relative inline-block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <button
+                    disabled={isUploading}
+                    className="px-6 py-2 rounded-full border border-border text-sm hover:bg-card transition-colors flex items-center justify-center min-w-[200px]"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : uploadedFile ? `${uploadedFile.name} (Change)` : "Browse Files"}
+                  </button>
+                </div>
               </div>
+              
+              {uploadedDesignUrl && (
+                <div className="mt-6 mx-auto w-32 h-32 rounded-xl overflow-hidden border border-gold/50 shadow-[0_0_15px_rgba(212,160,23,0.2)]">
+                  <img src={uploadedDesignUrl} alt="Design Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
           )}
 
@@ -370,6 +455,28 @@ function CustomSkinPage() {
                   );
                 })}
 
+                <div className="mt-8 space-y-4">
+                  <h3 className="text-lg font-medium">Contact Details</h3>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Full Name</label>
+                    <input
+                      type="text" required
+                      value={customerName} onChange={e => setCustomerName(e.target.value)}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+                      placeholder="Your Name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Phone Number</label>
+                    <input
+                      type="tel" required
+                      value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+                      placeholder="Your WhatsApp Number"
+                    />
+                  </div>
+                </div>
+
                 <div className="mt-8 p-5 rounded-2xl bg-card border border-border flex items-start gap-4">
                   <ShieldCheck className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
                   <div>
@@ -398,6 +505,15 @@ function CustomSkinPage() {
                 been received. Our team will contact you shortly on WhatsApp.
               </p>
               <div className="inline-flex flex-col gap-3">
+                <a
+                  href={`https://wa.me/+917261934434?text=${encodeURIComponent(
+                    `Hello Vighnaharta Mobile Shop! 🎨\n\nI have just submitted a Custom Skin request.\n\n*Request Details:*\n📱 Device: ${DEVICES.find((d) => d.id === selectedDevice)?.name}\n✨ Skin Type: ${SKIN_TYPES.find(s => s.id === selectedSkinType)?.name}\n🆔 Order ID: ${orderId}\n👤 Name: ${customerName}\n💳 Payment: ${selectedPayment === 'advance' ? '₹100 Advance Paid' : 'Fully Paid'}\n\nPlease review my request and confirm the details!`
+                  )}`}
+                  target="_blank" rel="noreferrer"
+                  className="px-8 py-3 rounded-full bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-[0_0_15px_rgba(22,163,74,0.3)] flex items-center justify-center gap-2"
+                >
+                  Confirm Details via WhatsApp
+                </a>
                 <button
                   onClick={() => (window.location.href = "/")}
                   className="px-8 py-3 rounded-full bg-card border border-border font-medium hover:border-gold hover:text-gold transition-colors"
@@ -427,8 +543,9 @@ function CustomSkinPage() {
                 disabled={
                   (currentStep === 1 && !selectedDevice) ||
                   (currentStep === 2 && !selectedSkinType) ||
-                  (currentStep === 3 && !uploadedFile) ||
-                  (currentStep === 4 && !selectedPayment) ||
+                  (currentStep === 3 && selectedSkinType === "custom" && !uploadedFile) ||
+                  (currentStep === 4 && (!selectedPayment || !customerName || !customerPhone)) ||
+                  isUploading ||
                   isSubmitting
                 }
                 className="group relative inline-flex items-center gap-2 rounded-full bg-gold px-8 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-gold/90 hover:scale-[1.02]"

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, ShoppingBag, ShieldCheck, Truck, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, ShoppingBag, ShieldCheck, Truck, Star, Loader2, X, Check } from "lucide-react";
+import { createPaymentIntent, initiateCheckout, PaymentVerification } from "@/lib/payments";
 
 export const Route = createFileRoute("/product/$productId")({
   component: ProductDetailsPage,
@@ -21,6 +22,17 @@ function ProductDetailsPage() {
   const { productId } = Route.useParams();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reservationSuccess, setReservationSuccess] = useState(false);
+  const [orderId, setOrderId] = useState("");
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    paymentType: "Advance Payment"
+  });
 
   useEffect(() => {
     async function fetchProduct() {
@@ -78,6 +90,62 @@ function ProductDetailsPage() {
 
     fetchProduct();
   }, [productId]);
+
+  const handleReservationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    
+    setIsSubmitting(true);
+    try {
+      const isAdvance = formData.paymentType === "Advance Payment";
+      const intent = await createPaymentIntent(product.price, "INR", isAdvance);
+      
+      await initiateCheckout(
+        intent,
+        { name: formData.name, phone: formData.phone, email: formData.email },
+        async (verification: PaymentVerification) => {
+          try {
+            const { data, error } = await supabase
+              .from('orders')
+              .insert([{
+                product_name: product.title,
+                customer_name: formData.name,
+                customer_phone: formData.phone,
+                customer_email: formData.email,
+                payment_type: formData.paymentType,
+                amount_paid: isAdvance ? 100 : product.price,
+                order_status: "Reserved",
+                pickup_status: "Pending",
+                razorpay_payment_id: verification.razorpay_payment_id,
+                razorpay_order_id: verification.razorpay_order_id,
+                razorpay_signature: verification.razorpay_signature
+              }])
+              .select();
+
+            if (error) throw error;
+            
+            const newOrderId = data?.[0]?.id || verification.razorpay_order_id;
+            setOrderId(newOrderId);
+            setReservationSuccess(true);
+          } catch (dbError: any) {
+            console.error("Database save failed:", dbError);
+            alert("Payment successful but failed to save order. Contact support with Payment ID: " + verification.razorpay_payment_id);
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        (paymentError: any) => {
+          console.error("Payment failed:", paymentError);
+          alert("Payment failed or cancelled.");
+          setIsSubmitting(false);
+        }
+      );
+    } catch (err: any) {
+      console.error("Error initiating payment:", err);
+      alert("Could not initiate payment: " + err.message);
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -171,6 +239,7 @@ function ProductDetailsPage() {
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
               <button 
                 disabled={product.stock_status === "Out of Stock"}
+                onClick={() => setIsReservationModalOpen(true)}
                 className={`flex-1 px-8 py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all ${
                   product.stock_status === "Out of Stock" 
                     ? "bg-card/50 text-muted-foreground cursor-not-allowed border border-border/50" 
@@ -178,7 +247,7 @@ function ProductDetailsPage() {
                 }`}
               >
                 <ShoppingBag className="w-5 h-5" />
-                {product.stock_status === "Out of Stock" ? "Out of Stock" : "Add to Cart"}
+                {product.stock_status === "Out of Stock" ? "Out of Stock" : "Reserve Now"}
               </button>
             </div>
 
@@ -202,6 +271,128 @@ function ProductDetailsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Reservation Modal */}
+      {isReservationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => !isSubmitting && !reservationSuccess && setIsReservationModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-card border border-border/60 rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 fade-in duration-300">
+            {!reservationSuccess && (
+              <button
+                onClick={() => setIsReservationModalOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-background/50 backdrop-blur-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+
+            {!reservationSuccess ? (
+              <>
+                <h2 className="text-2xl font-display uppercase tracking-wide mb-2">Reserve Product</h2>
+                <p className="text-sm text-muted-foreground mb-6">Complete your reservation for {product.title}.</p>
+                
+                <form onSubmit={handleReservationSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Full Name</label>
+                    <input
+                      type="text" required
+                      value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Phone Number</label>
+                    <input
+                      type="tel" required
+                      value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-background/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:border-gold/50 focus:ring-1 focus:ring-gold/50"
+                      placeholder="For digital receipt"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">Payment Type</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, paymentType: "Advance Payment" })}
+                        className={`py-3 px-4 rounded-xl text-sm font-medium border transition-all ${
+                          formData.paymentType === "Advance Payment" 
+                          ? "bg-gold/10 border-gold text-gold" 
+                          : "bg-background/50 border-border text-muted-foreground hover:border-gold/50"
+                        }`}
+                      >
+                        Advance (₹100)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, paymentType: "Full Payment" })}
+                        className={`py-3 px-4 rounded-xl text-sm font-medium border transition-all ${
+                          formData.paymentType === "Full Payment" 
+                          ? "bg-gold/10 border-gold text-gold" 
+                          : "bg-background/50 border-border text-muted-foreground hover:border-gold/50"
+                        }`}
+                      >
+                        Full (₹{product.price})
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gold text-primary-foreground font-semibold rounded-xl px-4 py-3 hover:bg-gold/90 transition-all flex items-center justify-center gap-2 mt-6"
+                  >
+                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm Reservation"}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+                  <Check className="w-8 h-8 text-green-500" />
+                </div>
+                <h2 className="text-2xl font-display uppercase tracking-wide mb-2">Reservation Confirmed</h2>
+                <p className="text-muted-foreground text-sm mb-2">Order ID: <span className="font-mono text-foreground font-medium">{orderId}</span></p>
+                <p className="text-muted-foreground text-sm mb-8">
+                  Please show this ID or send us a WhatsApp message to finalize your booking and coordinate pickup/delivery.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={`https://wa.me/+917261934434?text=${encodeURIComponent(
+                      `Hello Vighnaharta Mobile Shop! 🌟\n\nI have just successfully reserved a product.\n\n*Order Details:*\n🛍️ Product: ${product.title}\n🆔 Order ID: ${orderId}\n👤 Name: ${formData.name}\n💳 Payment: ${formData.paymentType} (${formData.paymentType === 'Advance Payment' ? '₹100 Paid' : 'Fully Paid'})\n\nPlease confirm my order and let me know the pickup process!`
+                    )}`}
+                    target="_blank" rel="noreferrer"
+                    className="w-full bg-green-600 text-white font-semibold rounded-xl px-4 py-3 hover:bg-green-700 transition-all shadow-[0_0_15px_rgba(22,163,74,0.3)] hover:shadow-[0_0_25px_rgba(22,163,74,0.5)] flex items-center justify-center gap-2"
+                  >
+                    Send Confirmation via WhatsApp
+                  </a>
+                  <button
+                    onClick={() => {
+                      setIsReservationModalOpen(false);
+                      setReservationSuccess(false);
+                    }}
+                    className="w-full py-3 rounded-xl border border-border bg-background font-medium hover:bg-card transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

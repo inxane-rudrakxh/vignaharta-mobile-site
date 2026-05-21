@@ -11,12 +11,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/products")({
   component: ProductsPage,
 });
 
-const CATEGORIES = [
+// The static list is now a fallback
+const FALLBACK_CATEGORIES = [
   "All",
   "Smartphones",
   "Pre-Owned Phones",
@@ -116,12 +118,24 @@ function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  const [categories, setCategories] = useState<string[]>(FALLBACK_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchData() {
       try {
+        // Fetch categories first
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
+          .select('name')
+          .order('name');
+          
+        if (!catError && catData && catData.length > 0) {
+          const catNames = catData.map((c: any) => c.name);
+          setCategories(["All", ...catNames]);
+        }
+
         // 1. FIX SUPABASE FETCH: Simple query without ordering to avoid schema mismatch crashes
         const { data, error } = await supabase
           .from('products')
@@ -200,7 +214,7 @@ function ProductsPage() {
       }
     }
 
-    fetchProducts();
+    fetchData();
   }, []);
 
   const filteredProducts = products.filter((product) => {
@@ -266,7 +280,7 @@ function ProductsPage() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full lg:w-auto scrollbar-hide">
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
@@ -283,9 +297,17 @@ function ProductsPage() {
 
           {/* Loading State */}
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 reveal">
-              <Loader2 className="h-8 w-8 text-gold animate-spin mb-4" />
-              <p className="text-muted-foreground">Loading premium catalog...</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 reveal">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="group relative rounded-2xl border border-border bg-card/40 overflow-hidden flex flex-col">
+                  <Skeleton className="h-[250px] w-full" />
+                  <div className="p-5 flex-1 flex flex-col">
+                    <Skeleton className="h-4 w-1/4 mb-3" />
+                    <Skeleton className="h-6 w-3/4 mb-4" />
+                    <Skeleton className="h-10 w-full mt-auto" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
