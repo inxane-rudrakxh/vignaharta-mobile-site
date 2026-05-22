@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
+import { Route as PaymentCancelRouteImport } from './routes/payment-cancel'
 import { Route as CustomSkinRouteImport } from './routes/custom-skin'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +20,16 @@ import { Route as ProductProductIdRouteImport } from './routes/product.$productI
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment-success',
+  path: '/payment-success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentCancelRoute = PaymentCancelRouteImport.update({
+  id: '/payment-cancel',
+  path: '/payment-cancel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustomSkinRoute = CustomSkinRouteImport.update({
@@ -45,6 +57,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/custom-skin': typeof CustomSkinRoute
+  '/payment-cancel': typeof PaymentCancelRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/products': typeof ProductsRoute
   '/product/$productId': typeof ProductProductIdRoute
 }
@@ -52,6 +66,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/custom-skin': typeof CustomSkinRoute
+  '/payment-cancel': typeof PaymentCancelRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/products': typeof ProductsRoute
   '/product/$productId': typeof ProductProductIdRoute
 }
@@ -60,6 +76,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/custom-skin': typeof CustomSkinRoute
+  '/payment-cancel': typeof PaymentCancelRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/products': typeof ProductsRoute
   '/product/$productId': typeof ProductProductIdRoute
 }
@@ -69,15 +87,26 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/custom-skin'
+    | '/payment-cancel'
+    | '/payment-success'
     | '/products'
     | '/product/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/custom-skin' | '/products' | '/product/$productId'
+  to:
+    | '/'
+    | '/admin'
+    | '/custom-skin'
+    | '/payment-cancel'
+    | '/payment-success'
+    | '/products'
+    | '/product/$productId'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/custom-skin'
+    | '/payment-cancel'
+    | '/payment-success'
     | '/products'
     | '/product/$productId'
   fileRoutesById: FileRoutesById
@@ -86,6 +115,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   CustomSkinRoute: typeof CustomSkinRoute
+  PaymentCancelRoute: typeof PaymentCancelRoute
+  PaymentSuccessRoute: typeof PaymentSuccessRoute
   ProductsRoute: typeof ProductsRoute
   ProductProductIdRoute: typeof ProductProductIdRoute
 }
@@ -97,6 +128,20 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-success': {
+      id: '/payment-success'
+      path: '/payment-success'
+      fullPath: '/payment-success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-cancel': {
+      id: '/payment-cancel'
+      path: '/payment-cancel'
+      fullPath: '/payment-cancel'
+      preLoaderRoute: typeof PaymentCancelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/custom-skin': {
@@ -134,6 +179,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CustomSkinRoute: CustomSkinRoute,
+  PaymentCancelRoute: PaymentCancelRoute,
+  PaymentSuccessRoute: PaymentSuccessRoute,
   ProductsRoute: ProductsRoute,
   ProductProductIdRoute: ProductProductIdRoute,
 }

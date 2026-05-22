@@ -999,14 +999,49 @@ function AdminDashboard() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex flex-col">
-                                <span className="text-sm text-foreground font-medium">₹{order.amount_paid || 0}</span>
-                                <span className="text-xs text-muted-foreground">{order.payment_type || 'N/A'}</span>
-                                {order.transaction_id && (
-                                  <span className="text-[10px] text-muted-foreground mt-1">Txn: {order.transaction_id}</span>
-                                )}
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-sm text-foreground font-semibold">
+                                  ₹{Number(order.amount_paid || 0).toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {order.payment_type || 'N/A'}
+                                </span>
+                                {/* Payment Gateway Badge */}
                                 {order.payment_gateway && (
-                                  <span className="text-[10px] text-muted-foreground">via {order.payment_gateway}</span>
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border w-fit ${
+                                    order.payment_gateway === 'Stripe'
+                                      ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                                      : order.payment_gateway === 'Cashfree'
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      : 'bg-card text-muted-foreground border-border/50'
+                                  }`}>
+                                    {order.payment_gateway === 'Stripe' && '💳 '}
+                                    {order.payment_gateway === 'Cashfree' && '🔒 '}
+                                    {order.payment_gateway}
+                                  </span>
+                                )}
+                                {/* Payment Status Badge */}
+                                {order.payment_status && (
+                                  <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border w-fit ${
+                                    order.payment_status === 'Paid' || order.payment_status === 'Advance Paid'
+                                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  }`}>
+                                    {order.payment_status}
+                                  </span>
+                                )}
+                                {/* Transaction ID */}
+                                {order.transaction_id && (
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.transaction_id!);
+                                      alert('Transaction ID copied!');
+                                    }}
+                                    title={order.transaction_id}
+                                    className="text-[10px] font-mono text-indigo-300/70 hover:text-indigo-300 transition-colors text-left truncate max-w-[160px]"
+                                  >
+                                    🔐 {order.transaction_id.slice(0, 20)}…
+                                  </button>
                                 )}
                               </div>
                             </td>
@@ -1093,11 +1128,38 @@ function AdminDashboard() {
                             <h4 className="font-medium text-foreground">{req.customer_name}</h4>
                             <p className="text-sm text-muted-foreground">{req.customer_phone}</p>
                           </div>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
-                            req.payment_status === "Paid" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                          }`}>
-                            {req.payment_status}
-                          </span>
+                          <div className="flex flex-col items-end gap-1.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
+                              req.payment_status === "Paid" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            }`}>
+                              {req.payment_status}
+                            </span>
+                            {req.payment_gateway && (
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                req.payment_gateway === 'Stripe'
+                                  ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                                  : req.payment_gateway === 'Cashfree'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  : 'bg-card text-muted-foreground border-border/50'
+                              }`}>
+                                {req.payment_gateway === 'Stripe' && '💳 '}
+                                {req.payment_gateway === 'Cashfree' && '🔒 '}
+                                {req.payment_gateway}
+                              </span>
+                            )}
+                            {req.transaction_id && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(req.transaction_id!);
+                                  alert('Transaction ID copied!');
+                                }}
+                                title={req.transaction_id}
+                                className="text-[10px] font-mono text-indigo-300/60 hover:text-indigo-300 transition-colors truncate max-w-[120px] text-right"
+                              >
+                                🔐 {req.transaction_id.slice(0, 14)}…
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 mb-4 bg-background/50 rounded-xl p-3 border border-border/50">

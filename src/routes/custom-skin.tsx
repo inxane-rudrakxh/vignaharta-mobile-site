@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import {
-  Smartphone, Laptop, Headphones, Tablet, Upload, Check, ChevronRight,
-  ShieldCheck, Loader2, Type, Smile, Trash, Palette, Search, Plus, Image as ImageIcon
+  Smartphone, Laptop, Headphones, Tablet, Check, ChevronRight,
+  ShieldCheck, Loader2, Type, Smile, Trash, Palette, Search, Image as ImageIcon
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { createPaymentIntent, initiateCheckout } from "@/lib/payments";
 import { toast } from "sonner";
 import { DEVICE_DATABASE, DeviceCategory } from "@/lib/devices";
 import { Rnd } from "react-rnd";
 import EmojiPicker, { Theme } from "emoji-picker-react";
+import { PremiumCheckoutModal, type CheckoutSkin } from "@/components/PremiumCheckoutModal";
 
 export const Route = createFileRoute("/custom-skin")({
   component: CustomSkinPage,
@@ -56,28 +56,21 @@ type DesignLayer = {
 
 function CustomSkinPage() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
-  
-  // Selection Engine
   const [selectedCategory, setSelectedCategory] = useState<DeviceCategory | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [modelSearch, setModelSearch] = useState("");
-
   const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
-  
-  // Studio Engine
+  const [selectedPayment, setSelectedPayment] = useState<string>("advance");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [uploadedDesignUrl, setUploadedDesignUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [orderId, setOrderId] = useState("");
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [layers, setLayers] = useState<DesignLayer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  // Form & Checkout
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [orderId, setOrderId] = useState("");
+  const [modelSearch, setModelSearch] = useState("");
 
   // Editor Refs
   const editorRef = useRef<HTMLDivElement>(null);
@@ -107,10 +100,15 @@ function CustomSkinPage() {
       setCurrentStep(4);
     } else if (currentStep === 4) {
       if (!customerName || !customerPhone) {
-        toast.error("Please provide your contact details.");
+        toast.error("Please provide your name and phone number.");
         return;
       }
-      handleSubmit();
+      if (customerPhone.replace(/\D/g, "").length !== 10) {
+        toast.error("Please enter a valid 10-digit phone number.");
+        return;
+      }
+      // Open premium checkout modal
+      setIsCheckoutOpen(true);
     } else {
       handleNextStep();
     }
@@ -201,88 +199,15 @@ function CustomSkinPage() {
     setLayers(layers.map(l => l.id === activeLayerId ? { ...l, ...updates } : l));
   };
 
-  const handleSubmit = async () => {
-    if (!selectedModel || !selectedSkinType || !selectedPayment || !customerName || !customerPhone || isSubmitting) return;
+  // handleSubmit removed — payment is now handled by PremiumCheckoutModal
 
-    console.log("STEP 1 - Submit clicked");
-    console.log("STEP 2 - Loading enabled");
-    setIsSubmitting(true);
-    
-    const failsafeTimer = setTimeout(() => {
-      console.log("Failsafe loading reset");
-      setIsSubmitting(false);
-    }, 10000);
-
-    const isAdvance = selectedPayment === "advance";
-    const basePrice = parseInt(SKIN_TYPES.find(s => s.id === selectedSkinType)?.price.replace(/\D/g, '') || "299", 10);
-    const amountToPay = isAdvance ? 100 : basePrice;
-
-    try {
-      const intent = await createPaymentIntent(amountToPay, "INR", isAdvance);
-      
-      const verification = await initiateCheckout(
-        intent,
-        { name: customerName, phone: customerPhone }
-      );
-      
-      console.log("STEP 7 - Saving order to Supabase");
-
-      const designMetadata = {
-        category: selectedCategory,
-        brand: selectedBrand,
-        model: selectedModel,
-        layers: layers
-      };
-
-      const { data, error: dbError } = await supabase
-        .from('custom_skin_requests')
-        .insert([
-          {
-            device_type: selectedModel, // Fallback for old schema
-            skin_type: selectedSkinType,
-            payment_type: selectedPayment,
-            uploaded_design_url: uploadedDesignUrl,
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            payment_status: selectedPayment === "full" ? "Paid" : "Advance Paid",
-            order_status: "Pending",
-            transaction_id: verification.transaction_id,
-            payment_gateway: "Cashfree",
-            design_metadata: designMetadata
-          }
-        ])
-        .select();
-
-      console.log("Insert Data:", data);
-      console.log("Insert Error:", dbError);
-
-      if (dbError) throw new Error("Payment successful but failed to save request. Contact support.");
-      
-      console.log("STEP 8 - Order saved successfully");
-      const newOrderId = data?.[0]?.id || verification.order_id;
-      setOrderId(newOrderId);
-      setCurrentStep(5);
-      toast.success("Custom skin request placed successfully!");
-      
-      // Auto-redirect to WhatsApp
-      const waMessage = encodeURIComponent(`Hello Vighnaharta Custom Studio!\n\nI just requested a custom skin.\n*Customer Name:* ${customerName}\n*Device:* ${selectedModel}\n*Skin Type:* ${selectedSkinType}\n*Payment:* ${selectedPayment}\n*Amount Paid:* ₹${amountToPay}\n*Transaction ID:* ${verification.transaction_id}\n*Request ID:* ${newOrderId}\n\nPlease confirm my request!`);
-      window.open(`https://wa.me/917261934434?text=${waMessage}`, '_blank');
-    } catch (err: any) {
-      console.error("Payment or reservation failed:", err);
-      toast.error(err.message || "Payment failed or cancelled.");
-    } finally {
-      clearTimeout(failsafeTimer);
-      console.log("STEP 9 - Resetting loading state");
-      setIsSubmitting(false);
-      console.log("Loading state reset complete");
-    }
-  };
 
   const filteredModels = selectedBrand && selectedCategory 
     ? DEVICE_DATABASE[selectedCategory].find(b => b.id === selectedBrand)?.models.filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase())) 
     : [];
 
   return (
+    <>
     <div className="min-h-screen grain pb-24">
       {/* Header */}
       <section className="relative pt-24 pb-8 overflow-hidden">
@@ -746,7 +671,6 @@ function CustomSkinPage() {
               <button
                 onClick={() => setCurrentStep((prev) => (prev - 1) as Step)}
                 className="px-6 py-3 rounded-full font-medium text-muted-foreground hover:text-foreground transition"
-                disabled={isSubmitting}
               >
                 Back
               </button>
@@ -756,17 +680,14 @@ function CustomSkinPage() {
               disabled={
                 (currentStep === 1 && !selectedModel) ||
                 (currentStep === 2 && !selectedSkinType) ||
-                (currentStep === 4 && (!selectedPayment || !customerName || !customerPhone)) ||
-                isSubmitting
+                (currentStep === 4 && (!customerName || !customerPhone))
               }
-              className="inline-flex items-center gap-2 rounded-full bg-gold px-8 py-3 text-sm font-semibold text-primary-foreground transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gold/90"
+              className="inline-flex items-center gap-2 rounded-full bg-gold px-8 py-3 text-sm font-semibold text-primary-foreground transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gold/90 active:scale-[0.98]"
             >
-              {isSubmitting ? (
+              {currentStep === 4 ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Processing
+                  Proceed to Checkout <ChevronRight className="w-4 h-4" />
                 </>
-              ) : currentStep === 4 ? (
-                "Complete Payment"
               ) : (
                 <>
                   Next Step <ChevronRight className="w-4 h-4" />
@@ -777,5 +698,23 @@ function CustomSkinPage() {
         )}
       </div>
     </div>
+
+    {/* Premium Checkout Modal */}
+    {isCheckoutOpen && selectedModel && selectedSkinType && (
+      <PremiumCheckoutModal
+        type="skin"
+        skin={{
+          deviceModel: selectedModel,
+          skinType: SKIN_TYPES.find(s => s.id === selectedSkinType)?.name || selectedSkinType,
+          uploadedDesignUrl: uploadedDesignUrl || undefined,
+          designMetadata: { category: selectedCategory, brand: selectedBrand, model: selectedModel, layers },
+          priceBase: parseInt(SKIN_TYPES.find(s => s.id === selectedSkinType)?.price.replace(/\D/g, '') || '299', 10),
+        }}
+        onClose={() => setIsCheckoutOpen(false)}
+        prefillName={customerName}
+        prefillPhone={customerPhone}
+      />
+    )}
+  </>
   );
 }
