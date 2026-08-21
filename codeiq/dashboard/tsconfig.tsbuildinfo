@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/CriticalBlocksList.tsx","./src/components/DebtBreakdown.tsx","./src/components/LanguageBreakdown.tsx","./src/components/RecentCheckpoints.tsx","./src/components/UnderstandingScore.tsx","./src/data/dataSource.ts"],"version":"5.9.3"}

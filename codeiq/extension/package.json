@@ -1,0 +1,54 @@
+{
+  "name": "codeiq",
+  "displayName": "CodeIQ",
+  "description": "A privacy-first understanding gate for AI-assisted coding.",
+  "version": "0.1.0",
+  "publisher": "veriq",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "vscode": "^1.86.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished", "workspaceContains:.codeiq/config.json"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "codeiq.openDashboard", "title": "CodeIQ: Open Understanding Dashboard" },
+      { "command": "codeiq.reviewCurrentFile", "title": "CodeIQ: Review Current File" },
+      { "command": "codeiq.markCurrentBlockExempt", "title": "CodeIQ: Mark Block Exempt" },
+      { "command": "codeiq.installGitHook", "title": "CodeIQ: Install Commit Warning Hook" }
+    ],
+    "configuration": {
+      "title": "CodeIQ",
+      "properties": {
+        "codeiq.riskThreshold": { "type": "number", "default": 60, "minimum": 0, "maximum": 100, "description": "Risk score at which CodeIQ recommends a short understanding checkpoint." },
+        "codeiq.lineCountSignal": { "type": "number", "default": 15, "minimum": 1, "description": "Line count used as a starting signal, never as a sole checkpoint trigger." },
+        "codeiq.evaluationModel": { "type": "string", "default": "claude-sonnet-4-6", "description": "Anthropic model used when live evaluation is enabled." },
+        "codeiq.useMockEvaluator": { "type": "boolean", "default": false, "description": "Use deterministic offline evaluation for demos and local development." },
+        "codeiq.sendCodeToLLM": { "type": "boolean", "default": false, "description": "Explicitly allow redacted code and your explanation to leave this machine for evaluation." },
+        "codeiq.anthropicApiKey": { "type": "string", "default": "", "description": "Anthropic API key. Prefer CODEIQ_ANTHROPIC_API_KEY in the extension host environment.", "scope": "machine-overridable" },
+        "codeiq.enableVoiceInput": { "type": "boolean", "default": false, "description": "Enable optional Web Speech API input in the checkpoint panel." },
+        "codeiq.enableGitHook": { "type": "boolean", "default": false, "description": "Allow CodeIQ to install a non-blocking pre-commit warning hook." },
+        "codeiq.enableTelemetry": { "type": "boolean", "default": false, "description": "Opt in to anonymous usage analytics. Disabled by default." },
+        "codeiq.riskWeights": { "type": "object", "default": {}, "description": "Optional JSON object overriding individual risk weights." }
+      }
+    },
+    "viewsContainers": { "activitybar": [{ "id": "codeiq", "title": "CodeIQ", "icon": "resources/codeiq.svg" }] },
+    "views": { "codeiq": [{ "id": "codeiq.overview", "name": "Understanding" }] },
+    "menus": {
+      "editor/context": [{ "command": "codeiq.reviewCurrentFile", "when": "editorTextFocus", "group": "codeiq@1" }]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json && node esbuild.cjs",
+    "watch": "npm run compile -- --watch",
+    "package": "npm run compile && vsce package --no-dependencies --allow-missing-repository",
+    "test": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.86.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0",
+    "@vscode/vsce": "^3.2.2"
+  }
+}

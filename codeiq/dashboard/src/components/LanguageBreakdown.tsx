@@ -1,0 +1,1 @@
+export function LanguageBreakdown({ languages }: { languages: Record<string, number> }) { return <div>{Object.entries(languages).map(([language, count]) => <div key={language}>{language}: {count}</div>)}</div>; }
