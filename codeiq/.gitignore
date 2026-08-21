@@ -5,3 +5,8 @@ dashboard/node_modules/
 dashboard/dist/
 .codeiq/
 *.log
+
+# generated TypeScript artifacts
+shared/*.js
+shared/*.js.map
+dashboard/tsconfig.tsbuildinfo
