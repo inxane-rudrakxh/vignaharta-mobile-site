@@ -36,11 +36,12 @@ Open `http://localhost:4173`. When the extension is active, the dashboard polls 
 ## Demo script
 
 1. Open a `.ts` file in the Extension Development Host and paste a 20–50 line block containing `refreshSession`, `token`, `fetch`, `db`, or similar authentication and API logic.
-2. CodeIQ detects the paste-shaped insertion without recording keystrokes, segments it into a logical block, and calculates a weighted risk score. The score's reasons appear in the checkpoint and are never presented as proof of AI provenance.
-3. The non-modal panel asks one question referencing actual symbols from the inserted code. Answer with a short explanation and select **Verify understanding**.
-4. A strong answer produces **Understanding verified** and a subtle green gutter check. A partial answer names what was understood and asks one simpler follow-up question. The loop caps at two follow-ups and never traps the developer.
-5. Open the dashboard to see the updated understanding percentage, verification mix, understanding debt, review queue, recent checkpoint activity, and language breakdown.
-6. Run **CodeIQ: Install Commit Warning Hook** if desired. A future commit with important unverified blocks produces a warning with **Review** and **Commit Anyway**; it never blocks the commit.
+2. CodeIQ detects the paste-shaped insertion without recording keystrokes and labels it **likely AI-assisted or pasted** when the structure matches common generated-code signals. This is explicitly a heuristic, not proof of AI provenance.
+3. CodeIQ immediately opens a non-modal explanation panel. It first gives a short local explanation of what the block appears to do, then asks a question referencing actual function and variable names so the developer can explain it in their own words.
+4. The non-modal panel asks one question referencing actual symbols from the inserted code. Answer with a short explanation and select **Verify understanding**.
+5. A strong answer produces **Understanding verified** and a subtle green gutter check. A partial answer names what was understood and asks one simpler follow-up question. The loop caps at two follow-ups and never traps the developer.
+6. Open the dashboard to see the updated understanding percentage, verification mix, understanding debt, review queue, recent checkpoint activity, and language breakdown.
+7. Run **CodeIQ: Install Commit Warning Hook** if desired. A future commit with important unverified blocks produces a warning with **Review** and **Commit Anyway**; it never blocks the commit.
 
 ## Architecture
 

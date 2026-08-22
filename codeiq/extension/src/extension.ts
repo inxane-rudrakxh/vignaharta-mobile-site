@@ -33,11 +33,14 @@ export function activate(context: vscode.ExtensionContext) {
   const refresh = () => { if (vscode.window.activeTextEditor) decorations.update(vscode.window.activeTextEditor, store.blocks.filter((block) => path.resolve(block.filePath) === path.resolve(vscode.window.activeTextEditor!.document.fileName))); };
   const watcher = new PasteWatcher(lineCountSignal, (event) => {
     const decision = risk.evaluate({ content: event.content, filePath: event.document.fileName, lineCount: event.lineCount, language: event.document.languageId }, { version: 1, projectName: path.basename(root), workspaceRoot: root, blocks: store.blocks, createdAt: "", updatedAt: "" });
+    const autoExplain = event.lineCount >= lineCountSignal() || event.source === "ai_agent_detected" || decision.checkpointRecommended;
+    if (autoExplain) void vscode.window.showInformationMessage(`CodeIQ: ${event.provenanceLabel}. Starting an explanation now.`, "Let's review");
     for (const detected of event.blocks) {
       const id = stableHash(`${event.document.fileName}:${detected.startLine}:${detected.content}`);
-      const block: CodeBlock = { id, filePath: event.document.fileName, startLine: detected.startLine, endLine: detected.endLine, insertedAt: new Date().toISOString(), lineCount: detected.content.split(/\r?\n/).length, source: event.source, riskScore: decision.score, riskReasons: decision.reasons, status: decision.checkpointRecommended ? "unverified" : "exempt", checkpoints: [], contentHash: stableHash(detected.content), language: event.document.languageId, excerpt: detected.content.slice(0, 5000) };
+      const reasons = [...decision.reasons, event.provenanceLabel];
+      const block: CodeBlock = { id, filePath: event.document.fileName, startLine: detected.startLine, endLine: detected.endLine, insertedAt: new Date().toISOString(), lineCount: detected.content.split(/\r?\n/).length, source: event.source, riskScore: decision.score, riskReasons: reasons, status: autoExplain ? "unverified" : "exempt", checkpoints: [], contentHash: stableHash(detected.content), language: event.document.languageId, excerpt: detected.content.slice(0, 5000) };
       store.upsertBlock(block);
-      if (decision.checkpointRecommended) {
+      if (autoExplain) {
         void (async () => { if (sendCodeToLLM() && !useMockEvaluator() && !(await promptForLLMConsent(context))) return; checkpoint.open(block, generateQuestion(detected.content, detected.label)); refresh(); })();
       }
     }

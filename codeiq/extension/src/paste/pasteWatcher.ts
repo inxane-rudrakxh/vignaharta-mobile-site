@@ -7,7 +7,23 @@ export interface SignificantInsertion {
   content: string;
   lineCount: number;
   source: "paste" | "ai_agent_detected" | "unknown";
+  provenanceLabel: string;
   blocks: ReturnType<typeof detectBlocks>;
+}
+
+/**
+ * Paste provenance is intentionally heuristic. VS Code does not expose a universal
+ * "this came from an AI" event, so CodeIQ combines insertion shape and code signals
+ * and always presents the result as likely, never confirmed.
+ */
+function classifyProvenance(text: string, lineCount: number): { source: SignificantInsertion["source"]; provenanceLabel: string } {
+  const explicitAgentMarker = /copilot|cursor|claude|chatgpt|gemini|codeium|tabnine/i.test(text);
+  const generatedShape = lineCount >= 15 && (
+    /```|TODO:|eslint-disable|@ts-ignore|try\s*\{|catch\s*\(|export\s+(?:async\s+)?(?:function|class)/i.test(text) ||
+    (text.match(/\b(?:async|await|interface|type|class|function|return)\b/g) || []).length >= 5
+  );
+  if (explicitAgentMarker || generatedShape) return { source: "ai_agent_detected", provenanceLabel: "heuristic: likely AI-assisted or pasted (not confirmed)" };
+  return { source: "paste", provenanceLabel: "heuristic: likely pasted (not confirmed AI-generated)" };
 }
 
 export class PasteWatcher implements vscode.Disposable {
@@ -28,17 +44,19 @@ export class PasteWatcher implements vscode.Disposable {
     const now = Date.now();
     const rapid = now - this.lastEditAt < 180;
     this.lastEditAt = now;
+    // Small incremental edits are intentionally ignored. A large single event is
+    // the starting signal; risk scoring decides whether a checkpoint is worthwhile.
     if (rapid && chars < 220 && lines < this.lineSignal()) return;
     if (chars < 180 && lines < this.lineSignal()) return;
     clearTimeout(this.pending);
     this.pending = setTimeout(() => {
-      const source = /copilot|cursor|claude/i.test(change.text) ? "ai_agent_detected" : "paste";
+      const provenance = classifyProvenance(change.text, lines);
       this.onInsertion({
         document: event.document,
         range: new vscode.Range(change.range.start, change.range.start.translate(Math.max(lines - 1, 0), 0)),
         content: change.text,
         lineCount: lines,
-        source,
+        ...provenance,
         blocks: detectBlocks(change.text, change.range.start.line + 1, languageForFile(event.document.fileName)),
       });
     }, 90);
